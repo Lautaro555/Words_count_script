@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 import pandas as pd
 import os
 import nltk
@@ -7,16 +7,14 @@ from nltk.corpus import stopwords
 from nltk.probability import FreqDist
 import matplotlib.pyplot as plt
 import re
-from PIL import Image, ImageTk
-import webbrowser
-from tkinter import messagebox
 
 def select_file():
     filepath = filedialog.askopenfilename()
     print("Selected:", filepath)
     extension = os.path.splitext(filepath)[1]
     if extension == ".txt":
-        filter_text(filepath, extension)
+        continue_with_column2(filepath, extension)
+        column_entry.config(state="disabled")
     elif extension in [".csv", ".xlsx"]:
         continue_with_column(filepath, extension)
     else:
@@ -25,29 +23,40 @@ def select_file():
 
 def continue_with_column(filepath, extension):
     column_entry.config(state="normal")
-    confirm_button.config(state="normal")
+    confirm_button.config(command=lambda: filter_text(filepath, extension))
+    
+def continue_with_column2(filepath, extension):
     confirm_button.config(command=lambda: filter_text(filepath, extension))
 
 
 def filter_text(filepath, extension):
     column = column_entry.get()
-    number_words = int(column_entry2.get())
+    if not column_entry2.get().strip():
+        messagebox.showerror("Error", "You have to enter a integer number")
     if extension == ".txt":
         text=open(filepath, 'r', encoding='utf-8').read()
     elif extension == ".csv":
+        if not column.strip():
+            messagebox.showerror("Error", "You have to enter a valid column name")
         data=pd.read_csv(filepath)
         text=""
+        if column not in data.columns:
+            messagebox.showerror("Error", "The column name is not in the dataset")
         for i in data[column]:
             i=str(i)
             text=text+i
     elif extension == ".xlsx":
+        if not column.strip():
+            messagebox.showerror("Error", "You have to enter a valid column name")
         data=pd.read_excel(filepath)
         text=""
+        if column not in data.columns:
+            messagebox.showerror("Error", "The column name is not in the dataset")
         for i in data[column]:
             i=str(i)
             text=text+i
-    else:
-        print("Unsupported file format")
+    
+    number_words = int(column_entry2.get())
     
     word_count(text,number_words) 
     
@@ -61,16 +70,15 @@ def word_count(text,number_words):
 
     words = [word for word in words if (word.lower() not in stop_words) and (len(word) > 2)]
 
-    # Calculate the frequency of words in the text
     fdist = FreqDist(words)
     
     top_words = fdist.most_common(number_words)
 
-    # Extract the words and frequencies into separate lists
-    words = [word for word, freq in top_words][::-1]  # reverse the order of the list
+    
+    words = [word for word, freq in top_words][::-1]  
     freqs = [freq for word, freq in top_words][::-1]
 
-    # Create a horizontal bar plot with custom colors
+    
     plt.figure(figsize=(10,5))
     plt.barh(range(len(words)), freqs, color='salmon', edgecolor='black', linewidth=1)
     plt.yticks(range(len(words)), words)
@@ -89,7 +97,6 @@ background_image = tk.PhotoImage(file = "background_image.png")
 background_label = tk.Label(root, image = background_image)
 background_label.place(x = 0, y = 0, relwidth = 1, relheight = 1)
 
-# Create widgets
 language_var = tk.StringVar(value="English")
 language_dropdown = tk.OptionMenu(root, language_var, "Portuguese", "Spanish", "English")
 language_dropdown.config(fg="white", bd=0)
@@ -112,7 +119,7 @@ column_label_2.pack(pady=5)
 column_entry2 = tk.Entry(root, state="normal")
 column_entry2.pack(side="top")
 
-confirm_button = tk.Button(root, text="Confirm", state="disabled", bg="#2196f3", activebackground="#1976d2", fg="white", bd=0, padx=5, pady=5)
+confirm_button = tk.Button(root, text="Confirm", state="normal", bg="#2196f3", activebackground="#1976d2", fg="white", bd=0, padx=5, pady=5)
 confirm_button.pack(pady=5)
 
 
